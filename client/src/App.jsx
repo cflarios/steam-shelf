@@ -5,10 +5,10 @@ import { jsPDF } from "jspdf";
 // Steam content descriptors: 3 = adult-only sexual content, 4 = frequent nudity.
 // Descriptor 1 (some nudity) is deliberately excluded: it would flag AAA games like Cyberpunk.
 const SEXUAL_DESCRIPTORS = new Set([3, 4]);
-// "Nudity" is deliberately not matched: mainstream games like Cyberpunk or
-// The Witcher 3 carry that tag; truly adult games have the descriptors above
-// or one of these tags.
-const NSFW_TAG_RE = /hentai|nsfw|sexual content|porn|eroge/i;
+// "Nudity" and "Sexual Content" are deliberately not matched: mainstream games
+// like Cyberpunk or The Witcher 3 carry those community tags. Truly adult games
+// have the descriptors above; these tags are only a fallback for delisted ones.
+const NSFW_TAG_RE = /hentai|nsfw|porn|eroge/i;
 
 // Saved form state so a page refresh doesn't require signing in again.
 // This is a local tool: everything stays in this browser's localStorage.
