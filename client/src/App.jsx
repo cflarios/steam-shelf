@@ -37,13 +37,17 @@ function GameCard({ game, playerName }) {
       .sort((a, b) => (a === "You" ? -1 : b === "You" ? 1 : a.localeCompare(b, "en")));
     ownerLabel = owners.join(", ");
   }
+  const copies = game.owners?.length || 0;
   return (
     <div className="card">
-      {failed ? (
-        <div className="noimg">No image</div>
-      ) : (
-        <img src={`/img/${game.appid}?v=2`} alt="" loading="lazy" onError={() => setFailed(true)} />
-      )}
+      <div className="thumb">
+        {failed ? (
+          <div className="noimg">No image</div>
+        ) : (
+          <img src={`/img/${game.appid}?v=2`} alt="" loading="lazy" onError={() => setFailed(true)} />
+        )}
+        {copies > 1 && <span className="copies">{copies}</span>}
+      </div>
       <div className="name">{game.name}</div>
       {ownerLabel && <div className="owner">Owned by {ownerLabel}</div>}
     </div>
@@ -62,6 +66,7 @@ export default function App() {
   const [tagsLoading, setTagsLoading] = useState(false);
   const [tagFilter, setTagFilter] = useState("");
   const [ownerFilter, setOwnerFilter] = useState("");
+  const [sortBy, setSortBy] = useState("name"); // "name" | "copies"
   const [hideNsfw, setHideNsfw] = useState(true);
   const [exportMsg, setExportMsg] = useState(null);
   const captureRef = useRef(null);
@@ -73,6 +78,7 @@ export default function App() {
     setTagData(null);
     setTagFilter("");
     setOwnerFilter("");
+    setSortBy("name");
     try {
       const params = new URLSearchParams({ steamid: profileValue });
       if (keyValue) params.set("key", keyValue);
@@ -200,12 +206,17 @@ export default function App() {
 
   const visibleGames = useMemo(() => {
     const tag = tagData && tagFilter ? Number(tagFilter) : null;
-    return ownerGames.filter((g) => {
+    const games = ownerGames.filter((g) => {
       if (tagData && hideNsfw && isNsfw(g.appid)) return false;
       if (tag !== null && !(tagData.apps[g.appid]?.t || []).includes(tag)) return false;
       return true;
     });
-  }, [ownerGames, tagData, tagFilter, hideNsfw]);
+    if (sortBy === "copies") {
+      // games arrive sorted by name, so ties stay alphabetical
+      games.sort((a, b) => (b.owners?.length || 0) - (a.owners?.length || 0));
+    }
+    return games;
+  }, [ownerGames, tagData, tagFilter, hideNsfw, sortBy]);
 
   const subtitle = useMemo(() => {
     if (!library) return "";
@@ -218,10 +229,11 @@ export default function App() {
     if (ownerFilter) parts.push(`owner: ${ownerFilter}`);
     if (tagFilter && tagData) parts.push(`tag: ${tagData.tagNames[tagFilter]}`);
     if (tagData && hideNsfw) parts.push("NSFW hidden");
+    if (sortBy === "copies") parts.push("sorted by copies");
     parts.push(`SteamID ${library.steamid}`);
     parts.push(`generated ${new Date().toLocaleDateString("en")}`);
     return parts.join(" · ");
-  }, [library, visibleGames, tagFilter, ownerFilter, tagData, hideNsfw]);
+  }, [library, visibleGames, tagFilter, ownerFilter, tagData, hideNsfw, sortBy]);
 
   async function renderCanvas() {
     const el = captureRef.current;
@@ -416,14 +428,20 @@ export default function App() {
             </span>
             {tagsLoading && <span className="tags-loading">Loading tags…</span>}
             {ownerOptions.length > 0 && (
-              <select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}>
-                <option value="">All members</option>
-                {ownerOptions.map(([name, n]) => (
-                  <option key={name} value={name}>
-                    {name} ({n})
-                  </option>
-                ))}
-              </select>
+              <>
+                <select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}>
+                  <option value="">All members</option>
+                  {ownerOptions.map(([name, n]) => (
+                    <option key={name} value={name}>
+                      {name} ({n})
+                    </option>
+                  ))}
+                </select>
+                <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                  <option value="name">Sort: A–Z</option>
+                  <option value="copies">Sort: Most copies</option>
+                </select>
+              </>
             )}
             {tagData && (
               <>
