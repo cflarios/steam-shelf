@@ -170,6 +170,9 @@ export default function App() {
     setOwnerFilter("");
     setSortBy("name");
     setMode(useFamily ? "family" : "own");
+    // Family view compares the shareable pool: members' F2P never appear there
+    // (Steam doesn't share them), so hide your own by default for symmetry.
+    setHideFree(useFamily);
     try {
       const params = new URLSearchParams({ steamid: profileValue });
       if (keyValue) params.set("key", keyValue);
