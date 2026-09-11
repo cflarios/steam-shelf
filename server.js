@@ -231,9 +231,19 @@ app.get("/api/family", async (req, res) => {
       });
     games.sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
 
+    // The webapi_token is a JWT — surface its expiry so the UI can show it
+    let tokenExpiresAt = null;
+    try {
+      const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString());
+      if (Number.isFinite(payload.exp)) tokenExpiresAt = payload.exp * 1000;
+    } catch {
+      // not a JWT-shaped token; no expiry info
+    }
+
     res.json({
       steamid,
       player: await getPlayerSummary(key, steamid),
+      tokenExpiresAt,
       familyName,
       memberCount: members.length,
       count: games.length,
