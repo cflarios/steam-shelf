@@ -60,7 +60,11 @@ export default function App() {
   const [familyEnabled, setFamilyEnabled] = useState(!!SAVED.familyEnabled);
   const [familyToken, setFamilyToken] = useState(SAVED.familyToken || "");
   const [status, setStatus] = useState(null); // { msg, error }
-  const [loading, setLoading] = useState(false);
+  // Start in loading state when a session will auto-load on mount, so the
+  // sign-in button doesn't flash while the library is being fetched.
+  const [loading, setLoading] = useState(
+    () => !!(SAVED.profile || new URLSearchParams(window.location.search).get("steamid"))
+  );
   const [library, setLibrary] = useState(null); // { steamid, games, familyName? }
   const [tagData, setTagData] = useState(null); // { apps, tagNames }
   const [tagsLoading, setTagsLoading] = useState(false);
@@ -350,7 +354,7 @@ export default function App() {
       </header>
 
       <div className="panel">
-        {!library && (
+        {!library && !loading && (
           <>
             <button
               type="button"
