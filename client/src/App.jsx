@@ -153,10 +153,18 @@ export default function App() {
     return info.t.some((t) => NSFW_TAG_RE.test(tagData.tagNames?.[t] || ""));
   }
 
+  // Games owned by the selected family member (or the whole library)
+  const ownerGames = useMemo(() => {
+    if (!library) return [];
+    if (!ownerFilter) return library.games;
+    return library.games.filter((g) => (g.owners || []).includes(ownerFilter));
+  }, [library, ownerFilter]);
+
+  // Tag options adapt to the member filter: only tags present in their games
   const tagOptions = useMemo(() => {
-    if (!library || !tagData) return [];
+    if (!tagData) return [];
     const counts = new Map();
-    for (const g of library.games) {
+    for (const g of ownerGames) {
       for (const t of tagData.apps[g.appid]?.t || []) counts.set(t, (counts.get(t) || 0) + 1);
     }
     return [...counts.entries()]
@@ -165,7 +173,12 @@ export default function App() {
         (a, b) =>
           b[1] - a[1] || tagData.tagNames[a[0]].localeCompare(tagData.tagNames[b[0]], "en")
       );
-  }, [library, tagData]);
+  }, [ownerGames, tagData]);
+
+  // If the selected tag doesn't exist in the new member's library, reset it
+  useEffect(() => {
+    if (tagFilter && !tagOptions.some(([t]) => String(t) === tagFilter)) setTagFilter("");
+  }, [tagOptions]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Family-mode only: member persona names with how many games each one owns
   const ownerOptions = useMemo(() => {
@@ -178,15 +191,13 @@ export default function App() {
   }, [library]);
 
   const visibleGames = useMemo(() => {
-    if (!library) return [];
     const tag = tagData && tagFilter ? Number(tagFilter) : null;
-    return library.games.filter((g) => {
-      if (ownerFilter && !(g.owners || []).includes(ownerFilter)) return false;
+    return ownerGames.filter((g) => {
       if (tagData && hideNsfw && isNsfw(g.appid)) return false;
       if (tag !== null && !(tagData.apps[g.appid]?.t || []).includes(tag)) return false;
       return true;
     });
-  }, [library, tagData, tagFilter, ownerFilter, hideNsfw]);
+  }, [ownerGames, tagData, tagFilter, hideNsfw]);
 
   const subtitle = useMemo(() => {
     if (!library) return "";
