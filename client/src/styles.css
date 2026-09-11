@@ -425,6 +425,12 @@ input:focus { outline: 2px solid var(--accent); }
   font-size: 0.78rem;
   font-weight: 700;
 }
+.card .copies.f2p {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--text);
+}
 .card img {
   width: 100%;
   aspect-ratio: 460 / 215;

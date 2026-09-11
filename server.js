@@ -276,6 +276,7 @@ function cacheStoreItem(cache, item) {
     t: item.tagids || [],
     d: item.content_descriptorids || [],
     h: item.assets?.header || null,
+    f: !!item.is_free,
   };
 }
 
@@ -319,8 +320,10 @@ app.post("/api/tags", async (req, res) => {
     if (!appids.length) return res.status(400).json({ error: "Missing appids." });
 
     const cache = await loadAppTagCache();
-    // h === undefined: entry from an older cache version without assets → refresh
-    const missing = appids.filter((id) => !cache[id] || cache[id].h === undefined);
+    // h/f === undefined: entry from an older cache version (no assets / no free flag) → refresh
+    const missing = appids.filter(
+      (id) => !cache[id] || cache[id].h === undefined || cache[id].f === undefined
+    );
 
     const CHUNK = 200;
     for (let i = 0; i < missing.length; i += CHUNK) {
@@ -341,13 +344,13 @@ app.post("/api/tags", async (req, res) => {
       }
       // apps delisted from the store: cache an empty entry so we don't re-query every time
       for (const id of chunk) {
-        if (!returned.has(id)) cache[id] = { t: [], d: [], h: null };
+        if (!returned.has(id)) cache[id] = { t: [], d: [], h: null, f: false };
       }
     }
     if (missing.length) await saveAppTagCache();
 
     const apps = {};
-    for (const id of appids) apps[id] = cache[id] || { t: [], d: [], h: null };
+    for (const id of appids) apps[id] = cache[id] || { t: [], d: [], h: null, f: false };
     res.json({ apps, tagNames: await getTagNames() });
   } catch (err) {
     console.error(err);

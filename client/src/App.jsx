@@ -104,7 +104,7 @@ function Toggle({ checked, onChange, label }) {
   );
 }
 
-function GameCard({ game, playerName }) {
+function GameCard({ game, playerName, free }) {
   const [failed, setFailed] = useState(false);
   let ownerLabel = null;
   if (game.owners) {
@@ -123,7 +123,11 @@ function GameCard({ game, playerName }) {
         ) : (
           <img src={`/img/${game.appid}?v=2`} alt="" loading="lazy" onError={() => setFailed(true)} />
         )}
-        {copies > 1 && <span className="copies">{copies}</span>}
+        {free ? (
+          <span className="copies f2p">Free to Play</span>
+        ) : (
+          copies > 1 && <span className="copies">{copies}</span>
+        )}
       </div>
       <div className="name">{game.name}</div>
       {ownerLabel && <div className="owner">Owned by {ownerLabel}</div>}
@@ -148,6 +152,7 @@ export default function App() {
   const [tagFilter, setTagFilter] = useState("");
   const [ownerFilter, setOwnerFilter] = useState("");
   const [hideNsfw, setHideNsfw] = useState(true);
+  const [hideFree, setHideFree] = useState(false);
   const [sortBy, setSortBy] = useState("name"); // "name" | "copies"
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [tokenDialog, setTokenDialog] = useState(false);
@@ -318,6 +323,7 @@ export default function App() {
     const tag = tagData && tagFilter ? Number(tagFilter) : null;
     const games = ownerGames.filter((g) => {
       if (tagData && hideNsfw && isNsfw(g.appid)) return false;
+      if (tagData && hideFree && tagData.apps[g.appid]?.f) return false;
       if (tag !== null && !(tagData.apps[g.appid]?.t || []).includes(tag)) return false;
       return true;
     });
@@ -326,7 +332,7 @@ export default function App() {
       games.sort((a, b) => (b.owners?.length || 0) - (a.owners?.length || 0));
     }
     return games;
-  }, [ownerGames, tagData, tagFilter, hideNsfw, sortBy]);
+  }, [ownerGames, tagData, tagFilter, hideNsfw, hideFree, sortBy]);
 
   const pageSubtitle = useMemo(() => {
     if (!library) return "";
@@ -349,6 +355,7 @@ export default function App() {
     if (ownerFilter) parts.push(`owner: ${ownerFilter}`);
     if (tagFilter && tagData) parts.push(`tag: ${tagData.tagNames[tagFilter]}`);
     if (tagData && hideNsfw) parts.push("NSFW hidden");
+    if (tagData && hideFree) parts.push("free-to-play hidden");
     if (sortBy === "copies") parts.push("sorted by copies");
     parts.push(`SteamID ${library.steamid}`);
     parts.push(`generated ${new Date().toLocaleDateString("en")}`);
@@ -683,6 +690,7 @@ export default function App() {
                   </select>
                 )}
                 <Toggle checked={hideNsfw} onChange={setHideNsfw} label="Hide NSFW (18+)" />
+                <Toggle checked={hideFree} onChange={setHideFree} label="Hide free-to-play" />
               </>
             )}
           </div>
@@ -696,7 +704,12 @@ export default function App() {
             )}
             <div className="grid">
               {visibleGames.map((g) => (
-                <GameCard key={g.appid} game={g} playerName={library.player?.name} />
+                <GameCard
+                  key={g.appid}
+                  game={g}
+                  playerName={library.player?.name}
+                  free={!!tagData?.apps?.[g.appid]?.f}
+                />
               ))}
             </div>
           </div>
