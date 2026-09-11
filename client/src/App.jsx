@@ -27,8 +27,16 @@ const STEAM_ICON = (
   </svg>
 );
 
-function GameCard({ game }) {
+function GameCard({ game, playerName }) {
   const [failed, setFailed] = useState(false);
+  let ownerLabel = null;
+  if (game.owners) {
+    // Uniform badge on every family card: all owners, "You" first
+    const owners = game.owners
+      .map((o) => (playerName && o === playerName ? "You" : o))
+      .sort((a, b) => (a === "You" ? -1 : b === "You" ? 1 : a.localeCompare(b, "en")));
+    ownerLabel = owners.join(", ");
+  }
   return (
     <div className="card">
       {failed ? (
@@ -37,7 +45,7 @@ function GameCard({ game }) {
         <img src={`/img/${game.appid}?v=2`} alt="" loading="lazy" onError={() => setFailed(true)} />
       )}
       <div className="name">{game.name}</div>
-      {game.owners && !game.own && <div className="owner">Owned by {game.owners.join(", ")}</div>}
+      {ownerLabel && <div className="owner">Owned by {ownerLabel}</div>}
     </div>
   );
 }
@@ -450,7 +458,7 @@ export default function App() {
             <p className="subtitle">{subtitle}</p>
             <div className="grid">
               {visibleGames.map((g) => (
-                <GameCard key={g.appid} game={g} />
+                <GameCard key={g.appid} game={g} playerName={library.player?.name} />
               ))}
             </div>
           </div>

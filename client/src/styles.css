@@ -208,7 +208,7 @@ button.linklike:hover { filter: brightness(1.2); }
 .card .owner {
   padding: 0 10px 8px;
   font-size: 0.72rem;
-  color: var(--accent);
+  color: #7e97ac;
 }
 .noimg {
   width: 100%;
