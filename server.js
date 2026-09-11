@@ -39,6 +39,21 @@ async function normalizeSteamId(key, input) {
   return resolveVanity(key, value);
 }
 
+// Best-effort persona name + avatar for the loaded profile
+async function getPlayerSummary(key, steamid) {
+  if (!key) return null;
+  try {
+    const res = await fetch(
+      `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${key}&steamids=${steamid}`
+    );
+    if (!res.ok) return null;
+    const p = (await res.json()).response?.players?.[0];
+    return p ? { name: p.personaname, avatar: p.avatarfull } : null;
+  } catch {
+    return null;
+  }
+}
+
 // --- Steam login (OpenID 2.0) ---
 const STEAM_OPENID = "https://steamcommunity.com/openid/login";
 
@@ -124,6 +139,7 @@ app.get("/api/games", async (req, res) => {
 
     res.json({
       steamid,
+      player: await getPlayerSummary(key, steamid),
       count: games.length,
       games: games.map((g) => ({
         appid: g.appid,
@@ -217,6 +233,7 @@ app.get("/api/family", async (req, res) => {
 
     res.json({
       steamid,
+      player: await getPlayerSummary(key, steamid),
       familyName,
       memberCount: members.length,
       count: games.length,

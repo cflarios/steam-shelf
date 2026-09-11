@@ -293,18 +293,31 @@ export default function App() {
       <header>
         {STEAM_ICON}
         <h1>Steam Library Export</h1>
+        {library && (
+          <div className="user-chip">
+            {library.player?.avatar && <img src={library.player.avatar} alt="" />}
+            <span>{library.player?.name || `SteamID ${library.steamid}`}</span>
+            <button type="button" className="linklike" onClick={clearSaved}>
+              Sign out
+            </button>
+          </div>
+        )}
       </header>
 
       <div className="panel">
-        <button
-          type="button"
-          className="steam-login"
-          onClick={() => (window.location.href = "/auth/steam")}
-        >
-          {STEAM_ICON}
-          Sign in through Steam
-        </button>
-        <div className="divider">or enter your profile manually</div>
+        {!library && (
+          <>
+            <button
+              type="button"
+              className="steam-login"
+              onClick={() => (window.location.href = "/auth/steam")}
+            >
+              {STEAM_ICON}
+              Sign in through Steam
+            </button>
+            <div className="divider">or enter your profile manually</div>
+          </>
+        )}
         <form className="load-form" onSubmit={onSubmit}>
           <input
             type="password"
