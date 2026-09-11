@@ -83,6 +83,17 @@ button:disabled { opacity: 0.5; cursor: wait; }
 .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: #40617c; }
 .hint { font-size: 0.8rem; margin-top: 8px; line-height: 1.5; }
 .hint a { color: var(--accent); }
+button.linklike {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: inherit;
+  font-weight: normal;
+  text-decoration: underline;
+  cursor: pointer;
+}
+button.linklike:hover { filter: brightness(1.2); }
 
 .family-box {
   flex: 1 1 100%;

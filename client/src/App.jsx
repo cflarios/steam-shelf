@@ -7,6 +7,20 @@ import { jsPDF } from "jspdf";
 const SEXUAL_DESCRIPTORS = new Set([3, 4]);
 const NSFW_TAG_RE = /hentai|nsfw|sexual content|nudity|porn|eroge/i;
 
+// Saved form state so a page refresh doesn't require signing in again.
+// This is a local tool: everything stays in this browser's localStorage.
+const STORAGE_KEY = "sle:settings";
+
+function loadSaved() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+const SAVED = loadSaved();
+
 const STEAM_ICON = (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="#66c0f4">
     <path d="M12 2C6.7 2 2.4 6.1 2 11.3l5.4 2.2c.5-.3 1-.5 1.6-.5l2.4-3.5v-.1c0-2.1 1.7-3.8 3.8-3.8s3.8 1.7 3.8 3.8-1.7 3.8-3.8 3.8h-.1l-3.4 2.5v.4c0 1.6-1.3 2.9-2.9 2.9-1.4 0-2.6-1-2.8-2.4l-3.9-1.6C3.2 19.4 7.2 22.5 12 22.5c5.8 0 10.5-4.7 10.5-10.5S17.8 2 12 2z" />
@@ -29,10 +43,10 @@ function GameCard({ game }) {
 }
 
 export default function App() {
-  const [apiKey, setApiKey] = useState("");
-  const [profile, setProfile] = useState("");
-  const [familyEnabled, setFamilyEnabled] = useState(false);
-  const [familyToken, setFamilyToken] = useState("");
+  const [apiKey, setApiKey] = useState(SAVED.apiKey || "");
+  const [profile, setProfile] = useState(SAVED.profile || "");
+  const [familyEnabled, setFamilyEnabled] = useState(!!SAVED.familyEnabled);
+  const [familyToken, setFamilyToken] = useState(SAVED.familyToken || "");
   const [status, setStatus] = useState(null); // { msg, error }
   const [loading, setLoading] = useState(false);
   const [library, setLibrary] = useState(null); // { steamid, games, familyName? }
@@ -90,19 +104,47 @@ export default function App() {
     }
   }
 
-  // Steam login return: /?steamid=... → load automatically
+  // Persist form state so refreshing the page doesn't lose the session
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ apiKey, profile, familyEnabled, familyToken }));
+    } catch {
+      // storage unavailable (private window, etc.)
+    }
+  }, [apiKey, profile, familyEnabled, familyToken]);
+
+  // On mount: handle the Steam login return (/?steamid=...) or restore the saved session
   useEffect(() => {
     const url = new URL(window.location.href);
     const sid = url.searchParams.get("steamid");
     if (sid) {
       setProfile(sid);
       history.replaceState(null, "", "/");
-      load(sid, "", false, "");
+      const useFamily = !!SAVED.familyEnabled && !!SAVED.familyToken;
+      load(sid, SAVED.apiKey || "", useFamily, SAVED.familyToken || "");
     } else if (url.searchParams.get("loginerror")) {
       history.replaceState(null, "", "/");
       setStatus({ msg: "Steam sign-in failed. Try again or enter your profile manually.", error: true });
+    } else if (SAVED.profile) {
+      const useFamily = !!SAVED.familyEnabled && !!SAVED.familyToken;
+      load(SAVED.profile, SAVED.apiKey || "", useFamily, SAVED.familyToken || "");
     }
   }, []);
+
+  function clearSaved() {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // storage unavailable
+    }
+    setApiKey("");
+    setProfile("");
+    setFamilyEnabled(false);
+    setFamilyToken("");
+    setLibrary(null);
+    setTagData(null);
+    setStatus({ msg: "Saved data cleared." });
+  }
 
   function isNsfw(appid) {
     const info = tagData?.apps?.[appid];
@@ -324,6 +366,11 @@ export default function App() {
             steamcommunity.com/dev/apikey
           </a>
           . Your profile and its "Game details" must be <b>public</b> for Steam to return the list.
+          Your inputs are saved in this browser so the library reloads automatically —{" "}
+          <button type="button" className="linklike" onClick={clearSaved}>
+            clear saved data
+          </button>
+          .
         </p>
       </div>
 
