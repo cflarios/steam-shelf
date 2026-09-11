@@ -39,6 +39,7 @@ export default function App() {
   const [tagData, setTagData] = useState(null); // { apps, tagNames }
   const [tagsLoading, setTagsLoading] = useState(false);
   const [tagFilter, setTagFilter] = useState("");
+  const [ownerFilter, setOwnerFilter] = useState("");
   const [hideNsfw, setHideNsfw] = useState(true);
   const [exportMsg, setExportMsg] = useState(null);
   const captureRef = useRef(null);
@@ -49,6 +50,7 @@ export default function App() {
     setLibrary(null);
     setTagData(null);
     setTagFilter("");
+    setOwnerFilter("");
     try {
       const params = new URLSearchParams({ steamid: profileValue });
       if (keyValue) params.set("key", keyValue);
@@ -123,16 +125,26 @@ export default function App() {
       );
   }, [library, tagData]);
 
+  // Family-mode only: member persona names with how many games each one owns
+  const ownerOptions = useMemo(() => {
+    if (!library?.familyName) return [];
+    const counts = new Map();
+    for (const g of library.games) {
+      for (const o of g.owners || []) counts.set(o, (counts.get(o) || 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "en"));
+  }, [library]);
+
   const visibleGames = useMemo(() => {
     if (!library) return [];
-    if (!tagData) return library.games;
-    const tag = tagFilter ? Number(tagFilter) : null;
+    const tag = tagData && tagFilter ? Number(tagFilter) : null;
     return library.games.filter((g) => {
-      if (hideNsfw && isNsfw(g.appid)) return false;
+      if (ownerFilter && !(g.owners || []).includes(ownerFilter)) return false;
+      if (tagData && hideNsfw && isNsfw(g.appid)) return false;
       if (tag !== null && !(tagData.apps[g.appid]?.t || []).includes(tag)) return false;
       return true;
     });
-  }, [library, tagData, tagFilter, hideNsfw]);
+  }, [library, tagData, tagFilter, ownerFilter, hideNsfw]);
 
   const subtitle = useMemo(() => {
     if (!library) return "";
@@ -142,12 +154,13 @@ export default function App() {
         : `${visibleGames.length} of ${library.count} games`,
     ];
     if (library.familyName) parts.push(`family: ${library.familyName}`);
+    if (ownerFilter) parts.push(`owner: ${ownerFilter}`);
     if (tagFilter && tagData) parts.push(`tag: ${tagData.tagNames[tagFilter]}`);
     if (tagData && hideNsfw) parts.push("NSFW hidden");
     parts.push(`SteamID ${library.steamid}`);
     parts.push(`generated ${new Date().toLocaleDateString("en")}`);
     return parts.join(" · ");
-  }, [library, visibleGames, tagFilter, tagData, hideNsfw]);
+  }, [library, visibleGames, tagFilter, ownerFilter, tagData, hideNsfw]);
 
   async function renderCanvas() {
     const el = captureRef.current;
@@ -323,6 +336,16 @@ export default function App() {
               <b>{visibleGames.length}</b> games
             </span>
             {tagsLoading && <span className="tags-loading">Loading tags…</span>}
+            {ownerOptions.length > 0 && (
+              <select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}>
+                <option value="">All members</option>
+                {ownerOptions.map(([name, n]) => (
+                  <option key={name} value={name}>
+                    {name} ({n})
+                  </option>
+                ))}
+              </select>
+            )}
             {tagData && (
               <>
                 <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}>
