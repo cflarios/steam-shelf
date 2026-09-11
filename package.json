@@ -1,7 +1,7 @@
 {
-  "name": "steam-library-export",
+  "name": "steam-shelf",
   "version": "2.0.0",
-  "description": "View your Steam library and export the full game list as PDF or JPG",
+  "description": "Show off your Steam library — and your whole Steam Family's — and export it as PDF or JPG",
   "main": "server.js",
   "type": "module",
   "scripts": {
