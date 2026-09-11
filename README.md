@@ -4,6 +4,8 @@
 
 Joining a Steam Family often starts with one question: *"what games do you bring?"* SteamShelf answers it in one click. It loads your full library with cover art, lets you filter out what you don't want to show, and exports a clean, shareable list. No game downloads, no account access — just the list.
 
+![SteamShelf showing a Steam Family library with owner badges, copy counts and filters](docs/screenshot.png)
+
 ![Node](https://img.shields.io/badge/node-%E2%89%A518-339933?logo=node.js&logoColor=white)
 ![React](https://img.shields.io/badge/react-18-61dafb?logo=react&logoColor=black)
 ![Vite](https://img.shields.io/badge/vite-5-646cff?logo=vite&logoColor=white)
