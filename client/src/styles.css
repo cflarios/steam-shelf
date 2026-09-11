@@ -22,8 +22,18 @@ header {
 }
 header h1 { color: var(--white); font-size: 1.4rem; font-weight: 600; }
 header svg { flex-shrink: 0; }
-.user-chip {
+.header-right {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.gh-link {
+  display: flex;
+  color: var(--text);
+}
+.gh-link:hover { color: var(--white); }
+.user-chip {
   display: flex;
   align-items: center;
   gap: 10px;
