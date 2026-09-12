@@ -158,7 +158,6 @@ export default function App() {
   const [tokenDialog, setTokenDialog] = useState(false);
   const [tokenDraft, setTokenDraft] = useState("");
   const [exportMsg, setExportMsg] = useState(null);
-  const [exportHeader, setExportHeader] = useState(false);
   const captureRef = useRef(null);
 
   async function load(profileValue, keyValue, useFamily, tokenValue) {
@@ -373,9 +372,7 @@ export default function App() {
 
   async function renderCanvas() {
     const el = captureRef.current;
-    setExportHeader(true);
     setExportMsg("Loading images…");
-    await new Promise((r) => setTimeout(r, 50));
     const imgs = [...el.querySelectorAll("img")];
     imgs.forEach((i) => (i.loading = "eager"));
     await Promise.all(
@@ -395,6 +392,23 @@ export default function App() {
       scale: el.scrollHeight > 4000 ? 1 : 1.5,
       useCORS: true,
       logging: false,
+      // The export header (title + filters + date) only exists in the capture:
+      // injecting it into html2canvas's clone is race-free, unlike toggling
+      // React state and hoping the DOM repaints before the snapshot.
+      onclone: (doc) => {
+        const target = doc.querySelector(".capture");
+        if (!target) return;
+        const hdr = doc.createElement("div");
+        hdr.className = "export-header";
+        const h = doc.createElement("h2");
+        h.textContent = library.familyName
+          ? `${library.familyName} — Steam Family library`
+          : "My Steam library";
+        const p = doc.createElement("p");
+        p.textContent = exportSubtitle;
+        hdr.append(h, p);
+        target.prepend(hdr);
+      },
     });
   }
 
@@ -409,7 +423,6 @@ export default function App() {
       setStatus({ msg: "JPG export failed: " + err.message, error: true });
     } finally {
       setExportMsg(null);
-      setExportHeader(false);
     }
   }
 
@@ -450,7 +463,6 @@ export default function App() {
       setStatus({ msg: "PDF export failed: " + err.message, error: true });
     } finally {
       setExportMsg(null);
-      setExportHeader(false);
     }
   }
 
@@ -699,12 +711,6 @@ export default function App() {
           </div>
 
           <div className="capture" ref={captureRef}>
-            {exportHeader && (
-              <div className="export-header">
-                <h2>{library.familyName ? `${library.familyName} — Steam Family library` : "My Steam library"}</h2>
-                <p>{exportSubtitle}</p>
-              </div>
-            )}
             <div className="grid">
               {visibleGames.map((g) => (
                 <GameCard
