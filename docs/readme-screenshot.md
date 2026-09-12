@@ -18,9 +18,11 @@ family data (no real libraries). Procedure:
 2. Open the app in a 1440px-wide viewport, mock `/api/family` (and `/api/games`)
    from the DevTools console with the demo family, and load it.
 
-3. Capture with html2canvas from the console. **Native `<select>` elements render
-   with clipped text in html2canvas** — the `onclone` hook below swaps each one
-   for a styled `<div>` with the selected option's text, which fixes it:
+3. Capture with html2canvas from the console. **Native `<select>` elements and
+   `<input>` placeholders render with clipped text in html2canvas** — the
+   `onclone` hook below swaps selects for styled `<div>`s with the selected
+   option's text (do the same for the `.search input`, using its value or
+   placeholder), which fixes it:
 
    ```js
    const s = document.createElement("script");
