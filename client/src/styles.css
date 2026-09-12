@@ -390,6 +390,38 @@ input:focus { outline: 2px solid var(--accent); }
 }
 .switch input:checked + .track .knob { transform: translateX(18px); }
 
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0 10px;
+  color: var(--muted);
+  margin-left: auto;
+}
+.search:focus-within { border-color: var(--accent); }
+.search input {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 0.85rem;
+  padding: 9px 0;
+  width: 170px;
+}
+.search input:focus { outline: none; }
+.search input::placeholder { color: var(--faint); }
+.search .clear {
+  display: flex;
+  background: none;
+  border: none;
+  padding: 2px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.search .clear:hover { color: var(--white); }
+
 /* ---------- Grid & cards ---------- */
 .capture { background: var(--bg); }
 .export-header { display: flex; flex-direction: column; gap: 4px; padding: 8px 0 16px; }
@@ -522,6 +554,7 @@ input:focus { outline: 2px solid var(--accent); }
   }
   .controls > * { flex-shrink: 0; }
   .member-chips { flex-wrap: nowrap; }
+  .search { margin-left: 0; }
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 
   .export-bar {

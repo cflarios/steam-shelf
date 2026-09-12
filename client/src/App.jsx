@@ -153,6 +153,7 @@ export default function App() {
   const [ownerFilter, setOwnerFilter] = useState("");
   const [hideNsfw, setHideNsfw] = useState(true);
   const [hideFree, setHideFree] = useState(false);
+  const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("name"); // "name" | "copies"
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [tokenDialog, setTokenDialog] = useState(false);
@@ -168,6 +169,7 @@ export default function App() {
     setTagFilter("");
     setOwnerFilter("");
     setSortBy("name");
+    setSearch("");
     setMode(useFamily ? "family" : "own");
     // Family view compares the shareable pool: members' F2P never appear there
     // (Steam doesn't share them), so hide your own by default for symmetry.
@@ -323,7 +325,9 @@ export default function App() {
 
   const visibleGames = useMemo(() => {
     const tag = tagData && tagFilter ? Number(tagFilter) : null;
+    const q = search.trim().toLowerCase();
     const games = ownerGames.filter((g) => {
+      if (q && !g.name.toLowerCase().includes(q)) return false;
       if (tagData && hideNsfw && isNsfw(g.appid)) return false;
       if (tagData && hideFree && tagData.apps[g.appid]?.f) return false;
       if (tag !== null && !(tagData.apps[g.appid]?.t || []).includes(tag)) return false;
@@ -334,7 +338,7 @@ export default function App() {
       games.sort((a, b) => (b.owners?.length || 0) - (a.owners?.length || 0));
     }
     return games;
-  }, [ownerGames, tagData, tagFilter, hideNsfw, hideFree, sortBy]);
+  }, [ownerGames, tagData, tagFilter, hideNsfw, hideFree, sortBy, search]);
 
   const pageSubtitle = useMemo(() => {
     if (!library) return "";
@@ -356,13 +360,14 @@ export default function App() {
     if (library.familyName) parts.push(`family: ${library.familyName}`);
     if (ownerFilter) parts.push(`owner: ${ownerFilter}`);
     if (tagFilter && tagData) parts.push(`tag: ${tagData.tagNames[tagFilter]}`);
+    if (search.trim()) parts.push(`search: "${search.trim()}"`);
     if (tagData && hideNsfw) parts.push("NSFW hidden");
     if (tagData && hideFree) parts.push("free-to-play hidden");
     if (sortBy === "copies") parts.push("sorted by copies");
     parts.push(`SteamID ${library.steamid}`);
     parts.push(`generated ${new Date().toLocaleDateString("en")}`);
     return parts.join(" · ");
-  }, [library, visibleGames, tagFilter, ownerFilter, tagData, hideNsfw, sortBy]);
+  }, [library, visibleGames, tagFilter, ownerFilter, tagData, hideNsfw, hideFree, sortBy, search]);
 
   const tokenHoursLeft = useMemo(() => {
     if (!library?.tokenExpiresAt) return null;
@@ -708,6 +713,25 @@ export default function App() {
                 <Toggle checked={hideFree} onChange={setHideFree} label="Hide free-to-play" />
               </>
             )}
+            <div className="search">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M20 20l-3.8-3.8" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search games…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              {search && (
+                <button type="button" className="clear" onClick={() => setSearch("")} aria-label="Clear search">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="capture" ref={captureRef}>
