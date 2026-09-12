@@ -15,13 +15,15 @@ Joining a Steam Family often starts with one question: *"what games do you bring
 
 ## ✨ Features
 
-- **Sign in through Steam** (OpenID) — or paste a SteamID64, profile name, or profile URL
+- **Sign in through Steam** (OpenID) — or paste a SteamID64, profile name, or profile URL under *Advanced options*
 - **Full library grid** with official cover art, including newer games hosted on Steam's hashed-asset CDN
-- **Steam Family mode** *(opt-in)*: the whole shared library with per-game owner badges, a copy-count badge on duplicates (just like Steam), a member filter, and sort by most copies
-- **Tag filter** built from your actual games ("Action (2385)"), scoped to the selected family member
+- **Steam Family mode** *(opt-in)*: switch to the whole shared library with per-game owner badges, a copy-count badge on duplicates (just like Steam), member filter chips, sort by most copies, and a token status pill showing when family access renews
+- **Search and tag filter** — instant name search, plus a tag dropdown built from your actual games ("Action (2385)") and scoped to the selected family member
 - **NSFW filter** (on by default) using Steam's official content descriptors — hides adult-only games without flagging mainstream titles
+- **Free-to-play badge and filter** — F2P games are labeled (they never count as family copies, since Steam doesn't share them) and hidden by default in family view
 - **Export exactly what you see** to a multi-page A4 **PDF** or a single **JPG**, with a header stating the filters applied, your SteamID, and the date
-- **Session persistence** — your profile, family token, and settings survive page refreshes; one click to clear them
+- **Session persistence** — your profile, family token, and settings survive page refreshes; sign out clears them
+- **Mobile-friendly** — responsive grid and a fixed bottom export bar on small screens
 
 ## 🚀 Quick start
 
@@ -45,7 +47,7 @@ Build and run:
 npm run serve
 ```
 
-Open http://localhost:3000, sign in through Steam, and press **Load library**.
+Open http://localhost:3000 and press **Sign in through Steam** — your library loads automatically. To load a profile manually (or use your own API key from the page), expand **Advanced options**.
 
 > **Heads up:** your Steam profile and its "Game details" must be **public** (Profile → Edit Profile → Privacy Settings), otherwise Steam's API returns nothing.
 
@@ -53,12 +55,12 @@ Open http://localhost:3000, sign in through Steam, and press **Load library**.
 
 Steam's family endpoints don't accept a regular API key — they need an access token from your logged-in Steam session:
 
-1. Tick **"Include the whole Steam Family library"**.
+1. Switch to **"Family library"** — a dialog asks for the token the first time.
 2. While logged in to the Steam store in your browser, open
    [store.steampowered.com/pointssummary/ajaxgetasyncconfig](https://store.steampowered.com/pointssummary/ajaxgetasyncconfig).
-3. Copy the `webapi_token` value into the token field.
+3. Copy the `webapi_token` value into the dialog.
 
-Tokens expire after ~24 hours. The token never leaves your machine: it goes from your browser to your local server, which only talks to the official Steam API.
+Tokens expire after ~24 hours — the status pill shows when, and its **Update** link opens the dialog again. The token never leaves your machine: it goes from your browser to your local server, which only talks to the official Steam API.
 
 ## 🛠️ Development
 
