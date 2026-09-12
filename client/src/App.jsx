@@ -104,7 +104,7 @@ function Toggle({ checked, onChange, label }) {
   );
 }
 
-function GameCard({ game, playerName, free }) {
+function GameCard({ game, playerName, free, dlc }) {
   const [failed, setFailed] = useState(false);
   let ownerLabel = null;
   if (game.owners) {
@@ -123,7 +123,9 @@ function GameCard({ game, playerName, free }) {
         ) : (
           <img src={`/img/${game.appid}?v=2`} alt="" loading="lazy" onError={() => setFailed(true)} />
         )}
-        {free ? (
+        {dlc ? (
+          <span className="copies f2p">DLC</span>
+        ) : free ? (
           <span className="copies f2p">Free to Play</span>
         ) : (
           copies > 1 && <span className="copies">{copies}</span>
@@ -153,6 +155,7 @@ export default function App() {
   const [ownerFilter, setOwnerFilter] = useState("");
   const [hideNsfw, setHideNsfw] = useState(true);
   const [hideFree, setHideFree] = useState(false);
+  const [hideDlc, setHideDlc] = useState(false);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("name"); // "name" | "copies"
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -330,6 +333,7 @@ export default function App() {
       if (q && !g.name.toLowerCase().includes(q)) return false;
       if (tagData && hideNsfw && isNsfw(g.appid)) return false;
       if (tagData && hideFree && tagData.apps[g.appid]?.f) return false;
+      if (tagData && hideDlc && tagData.apps[g.appid]?.y === 4) return false;
       if (tag !== null && !(tagData.apps[g.appid]?.t || []).includes(tag)) return false;
       return true;
     });
@@ -338,7 +342,7 @@ export default function App() {
       games.sort((a, b) => (b.owners?.length || 0) - (a.owners?.length || 0));
     }
     return games;
-  }, [ownerGames, tagData, tagFilter, hideNsfw, hideFree, sortBy, search]);
+  }, [ownerGames, tagData, tagFilter, hideNsfw, hideFree, hideDlc, sortBy, search]);
 
   const pageSubtitle = useMemo(() => {
     if (!library) return "";
@@ -363,11 +367,12 @@ export default function App() {
     if (search.trim()) parts.push(`search: "${search.trim()}"`);
     if (tagData && hideNsfw) parts.push("NSFW hidden");
     if (tagData && hideFree) parts.push("free-to-play hidden");
+    if (tagData && hideDlc) parts.push("DLCs hidden");
     if (sortBy === "copies") parts.push("sorted by copies");
     parts.push(`SteamID ${library.steamid}`);
     parts.push(`generated ${new Date().toLocaleDateString("en")}`);
     return parts.join(" · ");
-  }, [library, visibleGames, tagFilter, ownerFilter, tagData, hideNsfw, hideFree, sortBy, search]);
+  }, [library, visibleGames, tagFilter, ownerFilter, tagData, hideNsfw, hideFree, hideDlc, sortBy, search]);
 
   const tokenHoursLeft = useMemo(() => {
     if (!library?.tokenExpiresAt) return null;
@@ -711,6 +716,7 @@ export default function App() {
                 )}
                 <Toggle checked={hideNsfw} onChange={setHideNsfw} label="Hide NSFW (18+)" />
                 <Toggle checked={hideFree} onChange={setHideFree} label="Hide free-to-play" />
+                <Toggle checked={hideDlc} onChange={setHideDlc} label="Hide DLCs" />
               </>
             )}
             <div className="search">
@@ -742,6 +748,7 @@ export default function App() {
                   game={g}
                   playerName={library.player?.name}
                   free={!!tagData?.apps?.[g.appid]?.f}
+                  dlc={tagData?.apps?.[g.appid]?.y === 4}
                 />
               ))}
             </div>
