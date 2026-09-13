@@ -30,6 +30,28 @@ function formatUsd(cents) {
   return "$" + Math.round(cents / 100).toLocaleString("en-US");
 }
 
+// Countries offered for regional prices (must match the server's whitelist)
+const COUNTRIES = [
+  { cc: "US", label: "United States (USD)" },
+  { cc: "CO", label: "Colombia (COP)" },
+  { cc: "MX", label: "Mexico (MXN)" },
+  { cc: "CL", label: "Chile (CLP)" },
+  { cc: "BR", label: "Brazil (BRL)" },
+  { cc: "PE", label: "Peru (PEN)" },
+  { cc: "AR", label: "Argentina (USD)" },
+  { cc: "ES", label: "Spain (EUR)" },
+  { cc: "GB", label: "United Kingdom (GBP)" },
+  { cc: "CA", label: "Canada (CAD)" },
+];
+
+function formatCurrency(cents, currency) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(cents / 100);
+}
+
 // Labels used in the export header when a sort other than A–Z is active
 const SORT_LABELS = {
   copies: "sorted by copies",
@@ -172,6 +194,10 @@ export default function App() {
   const [hideNsfw, setHideNsfw] = useState(true);
   const [hideFree, setHideFree] = useState(false);
   const [search, setSearch] = useState("");
+  const [country, setCountry] = useState(
+    COUNTRIES.some((c) => c.cc === SAVED.country) ? SAVED.country : "US"
+  );
+  const [regionPrices, setRegionPrices] = useState(null); // { currency, prices: {appid: cents|null} }
   const [sortBy, setSortBy] = useState("name"); // "name" | "copies"
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [tokenDialog, setTokenDialog] = useState(false);
@@ -241,11 +267,40 @@ export default function App() {
   // Persist form state so refreshing the page doesn't lose the session
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ apiKey, profile, familyToken, mode }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ apiKey, profile, familyToken, mode, country }));
     } catch {
       // storage unavailable (private window, etc.)
     }
-  }, [apiKey, profile, familyToken, mode]);
+  }, [apiKey, profile, familyToken, mode, country]);
+
+  // Regional prices for the selected country (USD comes with the tag data)
+  useEffect(() => {
+    if (!library || country === "US") {
+      setRegionPrices(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/prices", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cc: country, appids: library.games.map((g) => g.appid) }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Error fetching prices");
+        if (!cancelled) setRegionPrices(data);
+      } catch (err) {
+        if (!cancelled) {
+          setRegionPrices(null);
+          setStatus({ msg: "Could not load regional prices: " + err.message, error: true });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [library, country]);
 
   // On mount: handle the Steam login return (/?steamid=...) or restore the saved session
   useEffect(() => {
@@ -362,23 +417,40 @@ export default function App() {
     if (sortBy === "copies") {
       games.sort((a, b) => (b.owners?.length || 0) - (a.owners?.length || 0));
     } else if (sortBy === "price-desc") {
-      games.sort((a, b) => (info(b)?.c || 0) - (info(a)?.c || 0));
+      const price = (g) => (regionPrices ? regionPrices.prices[g.appid] : info(g)?.c) || 0;
+      games.sort((a, b) => price(b) - price(a));
     } else if (sortBy === "price-asc") {
       // unpriced (free/delisted) games sink to the end
-      games.sort((a, b) => (info(a)?.c ?? 1e15) - (info(b)?.c ?? 1e15));
+      const price = (g) => (regionPrices ? regionPrices.prices[g.appid] : info(g)?.c) ?? 1e15;
+      games.sort((a, b) => price(a) - price(b));
     } else if (sortBy === "playtime") {
       games.sort((a, b) => (b.playtime || 0) - (a.playtime || 0));
     } else if (sortBy === "release") {
       games.sort((a, b) => (info(b)?.r || 0) - (info(a)?.r || 0));
     }
     return games;
-  }, [ownerGames, tagData, tagFilter, hideNsfw, hideFree, sortBy, search]);
+  }, [ownerGames, tagData, tagFilter, hideNsfw, hideFree, sortBy, search, regionPrices]);
 
   // Value of what's on screen (follows the member filter and every other filter)
+  // USD value of what's on screen (always shown); regional value rides alongside
   const visibleValue = useMemo(() => {
     if (!tagData) return 0;
     return visibleGames.reduce((sum, g) => sum + (tagData.apps[g.appid]?.c || 0), 0);
   }, [visibleGames, tagData]);
+
+  const visibleRegionValue = useMemo(() => {
+    if (!regionPrices) return 0;
+    return visibleGames.reduce((sum, g) => sum + (regionPrices.prices[g.appid] || 0), 0);
+  }, [visibleGames, regionPrices]);
+
+  const valueLabel = useMemo(() => {
+    if (visibleValue <= 0) return null;
+    let label = `≈ ${formatUsd(visibleValue)} value`;
+    if (regionPrices && visibleRegionValue > 0) {
+      label += ` (≈ ${formatCurrency(visibleRegionValue, regionPrices.currency)})`;
+    }
+    return label;
+  }, [visibleValue, visibleRegionValue, regionPrices]);
 
   // Per-member library value, for the chip tooltips
   const ownerValues = useMemo(() => {
@@ -397,10 +469,10 @@ export default function App() {
     if (library.familyName) parts.push(`${library.memberCount} members`);
     parts.push(`${library.count} games`);
     if (visibleGames.length !== library.count) parts.push(`${visibleGames.length} shown`);
-    if (visibleValue > 0) parts.push(`≈ ${formatUsd(visibleValue)} value`);
+    if (valueLabel) parts.push(valueLabel);
     if (SORT_LABELS[sortBy]) parts.push(SORT_LABELS[sortBy]);
     return parts.join(" · ");
-  }, [library, visibleGames, visibleValue, sortBy]);
+  }, [library, visibleGames, valueLabel, sortBy]);
 
   const exportSubtitle = useMemo(() => {
     if (!library) return "";
@@ -416,11 +488,11 @@ export default function App() {
     if (tagData && hideNsfw) parts.push("NSFW hidden");
     if (tagData && hideFree) parts.push("free-to-play hidden");
     if (SORT_LABELS[sortBy]) parts.push(SORT_LABELS[sortBy]);
-    if (visibleValue > 0) parts.push(`≈ ${formatUsd(visibleValue)} value`);
+    if (valueLabel) parts.push(valueLabel);
     parts.push(`SteamID ${library.steamid}`);
     parts.push(`generated ${new Date().toLocaleDateString("en")}`);
     return parts.join(" · ");
-  }, [library, visibleGames, visibleValue, tagFilter, ownerFilter, tagData, hideNsfw, hideFree, sortBy, search]);
+  }, [library, visibleGames, valueLabel, tagFilter, ownerFilter, tagData, hideNsfw, hideFree, sortBy, search]);
 
   const tokenHoursLeft = useMemo(() => {
     if (!library?.tokenExpiresAt) return null;
@@ -764,6 +836,18 @@ export default function App() {
                   <option value="price-asc">Sort: Price low to high</option>
                   <option value="playtime">Sort: Most played</option>
                   <option value="release">Sort: Newest first</option>
+                </select>
+                <select
+                  className="select"
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                  title="Store region used for prices and sorting; the USD total stays for easy sharing"
+                >
+                  {COUNTRIES.map((c) => (
+                    <option key={c.cc} value={c.cc}>
+                      Prices: {c.label}
+                    </option>
+                  ))}
                 </select>
                 <Toggle checked={hideNsfw} onChange={setHideNsfw} label="Hide NSFW (18+)" />
                 <Toggle checked={hideFree} onChange={setHideFree} label="Hide free-to-play" />

@@ -377,6 +377,90 @@ app.post("/api/tags", async (req, res) => {
   }
 });
 
+// --- Regional prices (per-country cache; USD lives in the main tag cache) ---
+const COUNTRY_CURRENCIES = {
+  US: "USD",
+  CO: "COP",
+  MX: "MXN",
+  CL: "CLP",
+  BR: "BRL",
+  PE: "PEN",
+  AR: "USD", // Steam prices Argentina in LATAM USD
+  ES: "EUR",
+  GB: "GBP",
+  CA: "CAD",
+};
+const PRICES_DIR = path.join(CACHE_DIR, "prices");
+const priceCaches = {}; // cc -> { [appid]: cents | null }
+const priceSaveTimers = {};
+
+async function loadPriceCache(cc) {
+  if (!priceCaches[cc]) {
+    try {
+      priceCaches[cc] = JSON.parse(await fs.readFile(path.join(PRICES_DIR, `${cc}.json`), "utf8"));
+    } catch {
+      priceCaches[cc] = {};
+    }
+  }
+  return priceCaches[cc];
+}
+
+function schedulePriceSave(cc) {
+  clearTimeout(priceSaveTimers[cc]);
+  priceSaveTimers[cc] = setTimeout(async () => {
+    try {
+      await fs.mkdir(PRICES_DIR, { recursive: true });
+      await fs.writeFile(path.join(PRICES_DIR, `${cc}.json`), JSON.stringify(priceCaches[cc]));
+    } catch (err) {
+      console.error(err);
+    }
+  }, 2000);
+}
+
+app.post("/api/prices", async (req, res) => {
+  try {
+    const cc = String(req.body?.cc || "").toUpperCase();
+    if (!COUNTRY_CURRENCIES[cc]) return res.status(400).json({ error: "Unsupported country." });
+    const appids = (req.body?.appids || []).filter((n) => Number.isInteger(n) && n > 0);
+    if (!appids.length) return res.status(400).json({ error: "Missing appids." });
+
+    const cache = await loadPriceCache(cc);
+    const missing = appids.filter((id) => cache[id] === undefined);
+
+    const CHUNK = 200;
+    for (let i = 0; i < missing.length; i += CHUNK) {
+      const chunk = missing.slice(i, i + CHUNK);
+      const input = {
+        ids: chunk.map((appid) => ({ appid })),
+        context: { language: "english", country_code: cc },
+        data_request: { include_all_purchase_options: true },
+      };
+      const apiRes = await fetch(GETITEMS_URL + encodeURIComponent(JSON.stringify(input)));
+      if (!apiRes.ok) throw new Error(`GetItems responded ${apiRes.status}`);
+      const data = await apiRes.json();
+      const returned = new Set();
+      for (const item of data.response?.store_items || []) {
+        if (!item.appid) continue;
+        returned.add(item.appid);
+        const bp = item.best_purchase_option;
+        const cents = Number(bp?.final_price_in_cents ?? bp?.original_price_in_cents ?? 0) || 0;
+        cache[item.appid] = cents > 0 ? cents : null;
+      }
+      for (const id of chunk) {
+        if (!returned.has(id)) cache[id] = null;
+      }
+    }
+    if (missing.length) schedulePriceSave(cc);
+
+    const prices = {};
+    for (const id of appids) prices[id] = cache[id] ?? null;
+    res.json({ currency: COUNTRY_CURRENCIES[cc], prices });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error fetching prices: " + err.message });
+  }
+});
+
 // Image proxy (same origin → html2canvas can capture without tainting the canvas)
 // Newer games (e.g. Battlefield 6) host their real header under store_item_assets/<hash>/,
 // while the classic CDN path returns a ~1.4KB gray placeholder with a 200 status.
