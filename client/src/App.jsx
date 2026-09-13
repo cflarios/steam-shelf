@@ -37,6 +37,7 @@ const SORT_LABELS = {
   "price-asc": "sorted by price (low to high)",
   playtime: "sorted by most played",
   release: "sorted by newest release",
+  acquired: "sorted by recently added",
 };
 
 function SteamIcon({ size = 22, color = "#66c0f4" }) {
@@ -370,6 +371,8 @@ export default function App() {
       games.sort((a, b) => (b.playtime || 0) - (a.playtime || 0));
     } else if (sortBy === "release") {
       games.sort((a, b) => (info(b)?.r || 0) - (info(a)?.r || 0));
+    } else if (sortBy === "acquired") {
+      games.sort((a, b) => (b.timeAcquired || 0) - (a.timeAcquired || 0));
     }
     return games;
   }, [ownerGames, tagData, tagFilter, hideNsfw, hideFree, sortBy, search]);
@@ -771,7 +774,8 @@ export default function App() {
                   <option value="playtime">
                     {library.familyName ? "Sort: Most played (your hours)" : "Sort: Most played"}
                   </option>
-                  <option value="release">Sort: Newest first</option>
+                  <option value="release">Sort: Newest release</option>
+                  {library.familyName && <option value="acquired">Sort: Recently added</option>}
                 </select>
                 <Toggle checked={hideNsfw} onChange={setHideNsfw} label="Hide NSFW (18+)" />
                 <Toggle checked={hideFree} onChange={setHideFree} label="Hide free-to-play" />

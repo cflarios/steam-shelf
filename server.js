@@ -229,6 +229,7 @@ app.get("/api/family", async (req, res) => {
           // Minutes, like GetOwnedGames — and they are the CALLER's own hours:
           // the family API never exposes other members' playtime.
           playtime: Number(a.rt_playtime || 0),
+          timeAcquired: Number(a.rt_time_acquired || 0), // unix; when the copy joined the pool
           owners: owners.map((id) => personaNames[id] || id),
           own: owners.includes(steamid),
         };
