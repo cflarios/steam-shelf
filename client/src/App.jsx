@@ -30,18 +30,19 @@ function formatUsd(cents) {
   return "$" + Math.round(cents / 100).toLocaleString("en-US");
 }
 
-// Countries offered for regional prices (must match the server's whitelist)
+// Countries offered for regional prices (must match the server's whitelist).
+// `short` is what the closed dropdown shows, sitting inline in the subtitle.
 const COUNTRIES = [
-  { cc: "US", label: "United States (USD)" },
-  { cc: "CO", label: "Colombia (COP)" },
-  { cc: "MX", label: "Mexico (MXN)" },
-  { cc: "CL", label: "Chile (CLP)" },
-  { cc: "BR", label: "Brazil (BRL)" },
-  { cc: "PE", label: "Peru (PEN)" },
-  { cc: "AR", label: "Argentina (USD)" },
-  { cc: "ES", label: "Spain (EUR)" },
-  { cc: "GB", label: "United Kingdom (GBP)" },
-  { cc: "CA", label: "Canada (CAD)" },
+  { cc: "US", short: "USD", label: "United States (USD)" },
+  { cc: "CO", short: "COP", label: "Colombia (COP)" },
+  { cc: "MX", short: "MXN", label: "Mexico (MXN)" },
+  { cc: "CL", short: "CLP", label: "Chile (CLP)" },
+  { cc: "BR", short: "BRL", label: "Brazil (BRL)" },
+  { cc: "PE", short: "PEN", label: "Peru (PEN)" },
+  { cc: "AR", short: "USD · AR", label: "Argentina (USD)" },
+  { cc: "ES", short: "EUR", label: "Spain (EUR)" },
+  { cc: "GB", short: "GBP", label: "United Kingdom (GBP)" },
+  { cc: "CA", short: "CAD", label: "Canada (CAD)" },
 ];
 
 function formatCurrency(cents, currency) {
@@ -751,6 +752,23 @@ export default function App() {
               </div>
               <p className="page-sub">
                 {pageSubtitle}
+                {tagData && (
+                  <>
+                    {" · "}
+                    <select
+                      className="mini-select"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                      title="Store region for prices and price sorting — the USD total always stays"
+                    >
+                      {COUNTRIES.map((c) => (
+                        <option key={c.cc} value={c.cc}>
+                          {c.short}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                )}
                 {tagsLoading && <span className="tags-loading"> · loading tags…</span>}
               </p>
             </div>
@@ -836,18 +854,6 @@ export default function App() {
                   <option value="price-asc">Sort: Price low to high</option>
                   <option value="playtime">Sort: Most played</option>
                   <option value="release">Sort: Newest first</option>
-                </select>
-                <select
-                  className="select"
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value)}
-                  title="Store region used for prices and sorting; the USD total stays for easy sharing"
-                >
-                  {COUNTRIES.map((c) => (
-                    <option key={c.cc} value={c.cc}>
-                      Prices: {c.label}
-                    </option>
-                  ))}
                 </select>
                 <Toggle checked={hideNsfw} onChange={setHideNsfw} label="Hide NSFW (18+)" />
                 <Toggle checked={hideFree} onChange={setHideFree} label="Hide free-to-play" />
