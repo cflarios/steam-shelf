@@ -144,6 +144,7 @@ app.get("/api/games", async (req, res) => {
       games: games.map((g) => ({
         appid: g.appid,
         name: g.name,
+        playtime: g.playtime_forever || 0, // minutes
       })),
     });
   } catch (err) {
@@ -225,6 +226,7 @@ app.get("/api/family", async (req, res) => {
         return {
           appid: a.appid,
           name: a.name,
+          playtime: Number(a.rt_playtime || 0) / 60, // family API reports seconds
           owners: owners.map((id) => personaNames[id] || id),
           own: owners.includes(steamid),
         };
@@ -282,6 +284,7 @@ function cacheStoreItem(cache, item) {
     h: item.assets?.header || null,
     f: !!item.is_free,
     p: cents > 0 ? cents : null,
+    r: Number(item.release?.steam_release_date || 0) || null, // unix release date
   };
 }
 
@@ -325,10 +328,14 @@ app.post("/api/tags", async (req, res) => {
     if (!appids.length) return res.status(400).json({ error: "Missing appids." });
 
     const cache = await loadAppTagCache();
-    // h/f/p === undefined: entry from an older cache version → refresh
+    // any field === undefined: entry from an older cache version → refresh
     const missing = appids.filter(
       (id) =>
-        !cache[id] || cache[id].h === undefined || cache[id].f === undefined || cache[id].p === undefined
+        !cache[id] ||
+        cache[id].h === undefined ||
+        cache[id].f === undefined ||
+        cache[id].p === undefined ||
+        cache[id].r === undefined
     );
 
     const CHUNK = 200;
@@ -342,6 +349,7 @@ app.post("/api/tags", async (req, res) => {
           include_ratings: true,
           include_assets: true,
           include_all_purchase_options: true,
+          include_release: true,
         },
       };
       const apiRes = await fetch(GETITEMS_URL + encodeURIComponent(JSON.stringify(input)));
@@ -355,13 +363,13 @@ app.post("/api/tags", async (req, res) => {
       }
       // apps delisted from the store: cache an empty entry so we don't re-query every time
       for (const id of chunk) {
-        if (!returned.has(id)) cache[id] = { t: [], d: [], h: null, f: false, p: null };
+        if (!returned.has(id)) cache[id] = { t: [], d: [], h: null, f: false, p: null, r: null };
       }
     }
     if (missing.length) await saveAppTagCache();
 
     const apps = {};
-    for (const id of appids) apps[id] = cache[id] || { t: [], d: [], h: null, f: false, p: null };
+    for (const id of appids) apps[id] = cache[id] || { t: [], d: [], h: null, f: false, p: null, r: null };
     res.json({ apps, tagNames: await getTagNames() });
   } catch (err) {
     console.error(err);
@@ -423,6 +431,7 @@ app.get("/img/:appid", async (req, res) => {
           include_ratings: true,
           include_assets: true,
           include_all_purchase_options: true,
+          include_release: true,
         },
       };
       const r = await fetch(GETITEMS_URL + encodeURIComponent(JSON.stringify(input)));

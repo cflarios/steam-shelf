@@ -29,6 +29,15 @@ function formatUsd(cents) {
   return "$" + Math.round(cents / 100).toLocaleString("en-US");
 }
 
+// Labels used in the export header when a sort other than A–Z is active
+const SORT_LABELS = {
+  copies: "sorted by copies",
+  "price-desc": "sorted by price (high to low)",
+  "price-asc": "sorted by price (low to high)",
+  playtime: "sorted by most played",
+  release: "sorted by newest release",
+};
+
 function SteamIcon({ size = 22, color = "#66c0f4" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
@@ -347,9 +356,19 @@ export default function App() {
       if (tag !== null && !(tagData.apps[g.appid]?.t || []).includes(tag)) return false;
       return true;
     });
+    // games arrive sorted by name, so ties stay alphabetical (Array.sort is stable)
+    const info = (g) => tagData?.apps?.[g.appid];
     if (sortBy === "copies") {
-      // games arrive sorted by name, so ties stay alphabetical
       games.sort((a, b) => (b.owners?.length || 0) - (a.owners?.length || 0));
+    } else if (sortBy === "price-desc") {
+      games.sort((a, b) => (info(b)?.p || 0) - (info(a)?.p || 0));
+    } else if (sortBy === "price-asc") {
+      // unpriced (free/delisted) games sink to the end
+      games.sort((a, b) => (info(a)?.p ?? 1e15) - (info(b)?.p ?? 1e15));
+    } else if (sortBy === "playtime") {
+      games.sort((a, b) => (b.playtime || 0) - (a.playtime || 0));
+    } else if (sortBy === "release") {
+      games.sort((a, b) => (info(b)?.r || 0) - (info(a)?.r || 0));
     }
     return games;
   }, [ownerGames, tagData, tagFilter, hideNsfw, hideFree, sortBy, search]);
@@ -378,7 +397,7 @@ export default function App() {
     parts.push(`${library.count} games`);
     if (visibleGames.length !== library.count) parts.push(`${visibleGames.length} shown`);
     if (visibleValue > 0) parts.push(`≈ ${formatUsd(visibleValue)} value`);
-    if (sortBy === "copies") parts.push("sorted by most copies");
+    if (SORT_LABELS[sortBy]) parts.push(SORT_LABELS[sortBy]);
     return parts.join(" · ");
   }, [library, visibleGames, visibleValue, sortBy]);
 
@@ -395,7 +414,7 @@ export default function App() {
     if (search.trim()) parts.push(`search: "${search.trim()}"`);
     if (tagData && hideNsfw) parts.push("NSFW hidden");
     if (tagData && hideFree) parts.push("free-to-play hidden");
-    if (sortBy === "copies") parts.push("sorted by copies");
+    if (SORT_LABELS[sortBy]) parts.push(SORT_LABELS[sortBy]);
     if (visibleValue > 0) parts.push(`≈ ${formatUsd(visibleValue)} value`);
     parts.push(`SteamID ${library.steamid}`);
     parts.push(`generated ${new Date().toLocaleDateString("en")}`);
@@ -737,12 +756,14 @@ export default function App() {
                     </option>
                   ))}
                 </select>
-                {library.familyName && (
-                  <select className="select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                    <option value="name">Sort: A–Z</option>
-                    <option value="copies">Sort: Most copies</option>
-                  </select>
-                )}
+                <select className="select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                  <option value="name">Sort: A–Z</option>
+                  {library.familyName && <option value="copies">Sort: Most copies</option>}
+                  <option value="price-desc">Sort: Price high to low</option>
+                  <option value="price-asc">Sort: Price low to high</option>
+                  <option value="playtime">Sort: Most played</option>
+                  <option value="release">Sort: Newest first</option>
+                </select>
                 <Toggle checked={hideNsfw} onChange={setHideNsfw} label="Hide NSFW (18+)" />
                 <Toggle checked={hideFree} onChange={setHideFree} label="Hide free-to-play" />
               </>
