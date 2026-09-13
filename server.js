@@ -274,16 +274,16 @@ function scheduleSaveCache() {
 }
 
 function cacheStoreItem(cache, item) {
-  // Current store price in USD cents (sales included — what the store shows
-  // today); null when there's no purchase option (free-to-play, delisted).
+  // Standard (regular, pre-discount) price in USD cents; null when there's no
+  // purchase option (free-to-play, delisted).
   const bp = item.best_purchase_option;
-  const cents = Number(bp?.final_price_in_cents ?? bp?.original_price_in_cents ?? 0) || 0;
+  const cents = Number(bp?.original_price_in_cents ?? bp?.final_price_in_cents ?? 0) || 0;
   cache[item.appid] = {
     t: item.tagids || [],
     d: item.content_descriptorids || [],
     h: item.assets?.header || null,
     f: !!item.is_free,
-    c: cents > 0 ? cents : null,
+    s: cents > 0 ? cents : null,
     r: Number(item.release?.steam_release_date || 0) || null, // unix release date
   };
 }
@@ -334,7 +334,7 @@ app.post("/api/tags", async (req, res) => {
         !cache[id] ||
         cache[id].h === undefined ||
         cache[id].f === undefined ||
-        cache[id].c === undefined ||
+        cache[id].s === undefined ||
         cache[id].r === undefined
     );
 
@@ -363,13 +363,13 @@ app.post("/api/tags", async (req, res) => {
       }
       // apps delisted from the store: cache an empty entry so we don't re-query every time
       for (const id of chunk) {
-        if (!returned.has(id)) cache[id] = { t: [], d: [], h: null, f: false, c: null, r: null };
+        if (!returned.has(id)) cache[id] = { t: [], d: [], h: null, f: false, s: null, r: null };
       }
     }
     if (missing.length) await saveAppTagCache();
 
     const apps = {};
-    for (const id of appids) apps[id] = cache[id] || { t: [], d: [], h: null, f: false, c: null, r: null };
+    for (const id of appids) apps[id] = cache[id] || { t: [], d: [], h: null, f: false, s: null, r: null };
     res.json({ apps, tagNames: await getTagNames() });
   } catch (err) {
     console.error(err);
@@ -443,7 +443,8 @@ app.post("/api/prices", async (req, res) => {
         if (!item.appid) continue;
         returned.add(item.appid);
         const bp = item.best_purchase_option;
-        const cents = Number(bp?.final_price_in_cents ?? bp?.original_price_in_cents ?? 0) || 0;
+        // Standard (pre-discount) price, matching the USD cache
+        const cents = Number(bp?.original_price_in_cents ?? bp?.final_price_in_cents ?? 0) || 0;
         cache[item.appid] = cents > 0 ? cents : null;
       }
       for (const id of chunk) {
