@@ -226,7 +226,9 @@ app.get("/api/family", async (req, res) => {
         return {
           appid: a.appid,
           name: a.name,
-          playtime: Number(a.rt_playtime || 0) / 60, // family API reports seconds
+          // Minutes, like GetOwnedGames — and they are the CALLER's own hours:
+          // the family API never exposes other members' playtime.
+          playtime: Number(a.rt_playtime || 0),
           owners: owners.map((id) => personaNames[id] || id),
           own: owners.includes(steamid),
         };

@@ -852,7 +852,9 @@ export default function App() {
                   {library.familyName && <option value="copies">Sort: Most copies</option>}
                   <option value="price-desc">Sort: Price high to low</option>
                   <option value="price-asc">Sort: Price low to high</option>
-                  <option value="playtime">Sort: Most played</option>
+                  <option value="playtime">
+                    {library.familyName ? "Sort: Most played (your hours)" : "Sort: Most played"}
+                  </option>
                   <option value="release">Sort: Newest first</option>
                 </select>
                 <Toggle checked={hideNsfw} onChange={setHideNsfw} label="Hide NSFW (18+)" />
