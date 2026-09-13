@@ -24,6 +24,11 @@ function loadSaved() {
 
 const SAVED = loadSaved();
 
+// Library values are approximate: current US store prices, F2P and delisted games count as $0
+function formatUsd(cents) {
+  return "$" + Math.round(cents / 100).toLocaleString("en-US");
+}
+
 function SteamIcon({ size = 22, color = "#66c0f4" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
@@ -340,15 +345,33 @@ export default function App() {
     return games;
   }, [ownerGames, tagData, tagFilter, hideNsfw, hideFree, sortBy, search]);
 
+  // Value of what's on screen (follows the member filter and every other filter)
+  const visibleValue = useMemo(() => {
+    if (!tagData) return 0;
+    return visibleGames.reduce((sum, g) => sum + (tagData.apps[g.appid]?.p || 0), 0);
+  }, [visibleGames, tagData]);
+
+  // Per-member library value, for the chip tooltips
+  const ownerValues = useMemo(() => {
+    if (!tagData || !library?.familyName) return {};
+    const values = {};
+    for (const g of library.games) {
+      const p = tagData.apps[g.appid]?.p || 0;
+      for (const o of g.owners || []) values[o] = (values[o] || 0) + p;
+    }
+    return values;
+  }, [library, tagData]);
+
   const pageSubtitle = useMemo(() => {
     if (!library) return "";
     const parts = [];
     if (library.familyName) parts.push(`${library.memberCount} members`);
     parts.push(`${library.count} games`);
     if (visibleGames.length !== library.count) parts.push(`${visibleGames.length} shown`);
+    if (visibleValue > 0) parts.push(`≈ ${formatUsd(visibleValue)} value`);
     if (sortBy === "copies") parts.push("sorted by most copies");
     return parts.join(" · ");
-  }, [library, visibleGames, sortBy]);
+  }, [library, visibleGames, visibleValue, sortBy]);
 
   const exportSubtitle = useMemo(() => {
     if (!library) return "";
@@ -364,10 +387,11 @@ export default function App() {
     if (tagData && hideNsfw) parts.push("NSFW hidden");
     if (tagData && hideFree) parts.push("free-to-play hidden");
     if (sortBy === "copies") parts.push("sorted by copies");
+    if (visibleValue > 0) parts.push(`≈ ${formatUsd(visibleValue)} value`);
     parts.push(`SteamID ${library.steamid}`);
     parts.push(`generated ${new Date().toLocaleDateString("en")}`);
     return parts.join(" · ");
-  }, [library, visibleGames, tagFilter, ownerFilter, tagData, hideNsfw, hideFree, sortBy, search]);
+  }, [library, visibleGames, visibleValue, tagFilter, ownerFilter, tagData, hideNsfw, hideFree, sortBy, search]);
 
   const tokenHoursLeft = useMemo(() => {
     if (!library?.tokenExpiresAt) return null;
@@ -684,6 +708,7 @@ export default function App() {
                       key={name}
                       className={"chip" + (ownerFilter === name ? " active" : "")}
                       onClick={() => setOwnerFilter(name)}
+                      title={ownerValues[name] ? `≈ ${formatUsd(ownerValues[name])} library value` : undefined}
                     >
                       <MemberAvatar name={name} />
                       {library.player?.name === name ? "You" : name} <span className="count">({n})</span>

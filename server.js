@@ -272,11 +272,16 @@ function scheduleSaveCache() {
 }
 
 function cacheStoreItem(cache, item) {
+  // Price in USD cents (regular price when discounted); null when the store
+  // has no purchase option (free-to-play, delisted).
+  const bp = item.best_purchase_option;
+  const cents = Number(bp?.original_price_in_cents ?? bp?.final_price_in_cents ?? 0) || 0;
   cache[item.appid] = {
     t: item.tagids || [],
     d: item.content_descriptorids || [],
     h: item.assets?.header || null,
     f: !!item.is_free,
+    p: cents > 0 ? cents : null,
   };
 }
 
@@ -320,9 +325,10 @@ app.post("/api/tags", async (req, res) => {
     if (!appids.length) return res.status(400).json({ error: "Missing appids." });
 
     const cache = await loadAppTagCache();
-    // h/f === undefined: entry from an older cache version → refresh
+    // h/f/p === undefined: entry from an older cache version → refresh
     const missing = appids.filter(
-      (id) => !cache[id] || cache[id].h === undefined || cache[id].f === undefined
+      (id) =>
+        !cache[id] || cache[id].h === undefined || cache[id].f === undefined || cache[id].p === undefined
     );
 
     const CHUNK = 200;
@@ -331,7 +337,12 @@ app.post("/api/tags", async (req, res) => {
       const input = {
         ids: chunk.map((appid) => ({ appid })),
         context: { language: "english", country_code: "US" },
-        data_request: { include_tag_count: 20, include_ratings: true, include_assets: true },
+        data_request: {
+          include_tag_count: 20,
+          include_ratings: true,
+          include_assets: true,
+          include_all_purchase_options: true,
+        },
       };
       const apiRes = await fetch(GETITEMS_URL + encodeURIComponent(JSON.stringify(input)));
       if (!apiRes.ok) throw new Error(`GetItems responded ${apiRes.status}`);
@@ -344,13 +355,13 @@ app.post("/api/tags", async (req, res) => {
       }
       // apps delisted from the store: cache an empty entry so we don't re-query every time
       for (const id of chunk) {
-        if (!returned.has(id)) cache[id] = { t: [], d: [], h: null, f: false };
+        if (!returned.has(id)) cache[id] = { t: [], d: [], h: null, f: false, p: null };
       }
     }
     if (missing.length) await saveAppTagCache();
 
     const apps = {};
-    for (const id of appids) apps[id] = cache[id] || { t: [], d: [], h: null, f: false };
+    for (const id of appids) apps[id] = cache[id] || { t: [], d: [], h: null, f: false, p: null };
     res.json({ apps, tagNames: await getTagNames() });
   } catch (err) {
     console.error(err);
@@ -407,7 +418,12 @@ app.get("/img/:appid", async (req, res) => {
       const input = {
         ids: [{ appid: Number(appid) }],
         context: { language: "english", country_code: "US" },
-        data_request: { include_tag_count: 20, include_ratings: true, include_assets: true },
+        data_request: {
+          include_tag_count: 20,
+          include_ratings: true,
+          include_assets: true,
+          include_all_purchase_options: true,
+        },
       };
       const r = await fetch(GETITEMS_URL + encodeURIComponent(JSON.stringify(input)));
       if (r.ok) {

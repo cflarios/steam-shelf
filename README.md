@@ -21,7 +21,8 @@ Joining a Steam Family often starts with one question: *"what games do you bring
 - **Search and tag filter** — instant name search, plus a tag dropdown built from your actual games ("Action (2385)") and scoped to the selected family member
 - **NSFW filter** (on by default) using Steam's official content descriptors — hides adult-only games without flagging mainstream titles
 - **Free-to-play badge and filter** — F2P games are labeled (they never count as family copies, since Steam doesn't share them) and hidden by default in family view
-- **Export exactly what you see** to a multi-page A4 **PDF** or a single **JPG**, with a header stating the filters applied, your SteamID, and the date
+- **Library value** — an approximate USD total (current store prices) for whatever is on screen: your library, one family member's, or the whole family pool; member chips show each member's value on hover
+- **Export exactly what you see** to a multi-page A4 **PDF** or a single **JPG**, with a header stating the filters applied, the library value, your SteamID, and the date
 - **Session persistence** — your profile, family token, and settings survive page refreshes; sign out clears them
 - **Mobile-friendly** — responsive grid and a fixed bottom export bar on small screens
 
