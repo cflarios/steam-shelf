@@ -109,7 +109,7 @@ function Toggle({ checked, onChange, label }) {
   );
 }
 
-function GameCard({ game, playerName, free }) {
+function GameCard({ game, playerName, free, nsfw }) {
   const [failed, setFailed] = useState(false);
   let ownerLabel = null;
   if (game.owners) {
@@ -128,11 +128,14 @@ function GameCard({ game, playerName, free }) {
         ) : (
           <img src={`/img/${game.appid}?v=2`} alt="" loading="lazy" onError={() => setFailed(true)} />
         )}
-        {free ? (
-          <span className="copies f2p">Free to Play</span>
-        ) : (
-          copies > 1 && <span className="copies">{copies}</span>
-        )}
+        <span className="badges">
+          {free ? (
+            <span className="copies f2p">Free to Play</span>
+          ) : (
+            copies > 1 && <span className="copies">{copies}</span>
+          )}
+          {nsfw && <span className="copies f2p">NSFW</span>}
+        </span>
       </div>
       <div className="name">{game.name}</div>
       {ownerLabel && <div className="owner">Owned by {ownerLabel}</div>}
@@ -773,6 +776,7 @@ export default function App() {
                   game={g}
                   playerName={library.player?.name}
                   free={!!tagData?.apps?.[g.appid]?.f}
+                  nsfw={tagData ? isNsfw(g.appid) : false}
                 />
               ))}
             </div>
