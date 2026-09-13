@@ -24,7 +24,8 @@ function loadSaved() {
 
 const SAVED = loadSaved();
 
-// Library values are approximate: current US store prices, F2P and delisted games count as $0
+// Library values are approximate: current US store prices (sales included),
+// F2P and delisted games count as $0
 function formatUsd(cents) {
   return "$" + Math.round(cents / 100).toLocaleString("en-US");
 }
@@ -361,10 +362,10 @@ export default function App() {
     if (sortBy === "copies") {
       games.sort((a, b) => (b.owners?.length || 0) - (a.owners?.length || 0));
     } else if (sortBy === "price-desc") {
-      games.sort((a, b) => (info(b)?.p || 0) - (info(a)?.p || 0));
+      games.sort((a, b) => (info(b)?.c || 0) - (info(a)?.c || 0));
     } else if (sortBy === "price-asc") {
       // unpriced (free/delisted) games sink to the end
-      games.sort((a, b) => (info(a)?.p ?? 1e15) - (info(b)?.p ?? 1e15));
+      games.sort((a, b) => (info(a)?.c ?? 1e15) - (info(b)?.c ?? 1e15));
     } else if (sortBy === "playtime") {
       games.sort((a, b) => (b.playtime || 0) - (a.playtime || 0));
     } else if (sortBy === "release") {
@@ -376,7 +377,7 @@ export default function App() {
   // Value of what's on screen (follows the member filter and every other filter)
   const visibleValue = useMemo(() => {
     if (!tagData) return 0;
-    return visibleGames.reduce((sum, g) => sum + (tagData.apps[g.appid]?.p || 0), 0);
+    return visibleGames.reduce((sum, g) => sum + (tagData.apps[g.appid]?.c || 0), 0);
   }, [visibleGames, tagData]);
 
   // Per-member library value, for the chip tooltips
@@ -384,7 +385,7 @@ export default function App() {
     if (!tagData || !library?.familyName) return {};
     const values = {};
     for (const g of library.games) {
-      const p = tagData.apps[g.appid]?.p || 0;
+      const p = tagData.apps[g.appid]?.c || 0;
       for (const o of g.owners || []) values[o] = (values[o] || 0) + p;
     }
     return values;
