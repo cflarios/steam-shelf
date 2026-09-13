@@ -266,17 +266,6 @@ input:focus { outline: 2px solid var(--accent); }
   color: var(--muted);
 }
 .page-sub { font-size: 0.85rem; color: var(--muted); }
-.mini-select {
-  background: transparent;
-  border: none;
-  color: var(--accent);
-  font-size: inherit;
-  font-family: inherit;
-  padding: 0;
-  cursor: pointer;
-}
-.mini-select:hover { text-decoration: underline; }
-.mini-select option { background: var(--bg-panel); color: var(--text); }
 .tags-loading { color: var(--faint); }
 .title-actions {
   margin-left: auto;
