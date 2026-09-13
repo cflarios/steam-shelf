@@ -169,16 +169,6 @@ export default function App() {
   async function load(profileValue, keyValue, useFamily, tokenValue) {
     setLoading(true);
     setStatus({ msg: "Querying the Steam API…" });
-    setLibrary(null);
-    setTagData(null);
-    setTagFilter("");
-    setOwnerFilter("");
-    setSortBy("name");
-    setSearch("");
-    setMode(useFamily ? "family" : "own");
-    // Family view compares the shareable pool: members' F2P never appear there
-    // (Steam doesn't share them), so hide your own by default for symmetry.
-    setHideFree(useFamily);
     try {
       const params = new URLSearchParams({ steamid: profileValue });
       if (keyValue) params.set("key", keyValue);
@@ -189,13 +179,29 @@ export default function App() {
       }
       const res = await fetch(url);
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Unknown error");
+      if (!res.ok) {
+        // Expired/rejected family token: stay where we are and ask for a fresh one
+        if (useFamily && res.status === 401) {
+          setTokenDraft("");
+          setTokenDialog(true);
+        }
+        throw new Error(data.error || "Unknown error");
+      }
+      // Commit only on success, so a failed load never drops the current view
       setLibrary(data);
+      setMode(useFamily ? "family" : "own");
+      setTagData(null);
+      setTagFilter("");
+      setOwnerFilter("");
+      setSortBy("name");
+      setSearch("");
+      // Family view compares the shareable pool: members' F2P never appear there
+      // (Steam doesn't share them), so hide your own by default for symmetry.
+      setHideFree(useFamily);
       setStatus(null);
       loadTags(data.games.map((g) => g.appid));
     } catch (err) {
       setStatus({ msg: err.message, error: true });
-      if (useFamily) setMode("own");
     } finally {
       setLoading(false);
     }
